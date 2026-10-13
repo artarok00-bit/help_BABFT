@@ -1,5 +1,5 @@
 -- UNIVERSAL SCRIPT BY ARTAR
--- Стиль: Черно-белый (ЧБ)
+-- Стиль: Черно-белый (ЧБ) с плавными углами
 
 local player = game.Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -7,9 +7,10 @@ local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 -- Переменные
-local speedValue = 16
+local speedValue = 45
 local isShiftPressed = false
-local infiniteJumpEnabled = true
+local infiniteJumpEnabled = false -- Изначально ВЫКЛЮЧЕН
+local isMinimized = false
 
 -- 1. Создание основного интерфейса (ЧБ стиль)
 local gui = Instance.new("ScreenGui")
@@ -19,13 +20,18 @@ gui.Parent = playerGui
 
 -- Главная рамка (черная с белой обводкой)
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 220, 0, 200)
-mainFrame.Position = UDim2.new(0.5, -110, 0.5, -100)
+mainFrame.Size = UDim2.new(0, 220, 0, 210)
+mainFrame.Position = UDim2.new(0.5, -110, 0.5, -105)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
 mainFrame.Draggable = true -- Можно перетаскивать мышкой
 mainFrame.Parent = gui
+
+-- Закругленные углы для главной рамки
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 10)
+mainCorner.Parent = mainFrame
 
 -- Обводка рамки (белая)
 local stroke = Instance.new("UIStroke")
@@ -33,38 +39,76 @@ stroke.Color = Color3.fromRGB(255, 255, 255)
 stroke.Thickness = 1
 stroke.Parent = mainFrame
 
+-- Верхняя панель (для заголовка и кнопки сворачивания)
+local topPanel = Instance.new("Frame")
+topPanel.Size = UDim2.new(1, 0, 0, 30)
+topPanel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+topPanel.BorderSizePixel = 0
+topPanel.Parent = mainFrame
+
+-- Закругленные углы для верхней панели
+local topCorner = Instance.new("UICorner")
+topCorner.CornerRadius = UDim.new(0, 10)
+topCorner.Parent = topPanel
+
 -- Заголовок
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+title.Size = UDim2.new(1, -30, 1, 0)
+title.Position = UDim2.new(0, 10, 0, 0)
+title.BackgroundTransparency = 1
 title.TextColor3 = Color3.fromRGB(0, 0, 0)
 title.Text = "UNIVERSAL MENU"
 title.Font = Enum.Font.GothamBold
 title.TextSize = 14
-title.Parent = mainFrame
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = topPanel
+
+-- Кнопка сворачивания (Свернуть/Развернуть)
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+minimizeBtn.Position = UDim2.new(1, -30, 0, 0)
+minimizeBtn.BackgroundTransparency = 1
+minimizeBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+minimizeBtn.Text = "—"
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 18
+minimizeBtn.Parent = topPanel
+
+-- Контейнер для контента (чтобы скрывать/показывать всё сразу)
+local contentFrame = Instance.new("Frame")
+contentFrame.Size = UDim2.new(1, 0, 1, -30)
+contentFrame.Position = UDim2.new(0, 0, 0, 30)
+contentFrame.BackgroundTransparency = 1
+contentFrame.Parent = mainFrame
 
 -- Текст: Speed Limit
 local speedLabel = Instance.new("TextLabel")
 speedLabel.Size = UDim2.new(1, 0, 0, 20)
-speedLabel.Position = UDim2.new(0, 0, 0, 40)
+speedLabel.Position = UDim2.new(0, 0, 0, 10)
 speedLabel.BackgroundTransparency = 1
 speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedLabel.Text = "Speed Limit (16-500):"
 speedLabel.Font = Enum.Font.Gotham
 speedLabel.TextSize = 12
-speedLabel.Parent = mainFrame
+speedLabel.Parent = contentFrame
 
 -- Поле ввода скорости (TextBox)
 local speedBox = Instance.new("TextBox")
 speedBox.Size = UDim2.new(0, 180, 0, 30)
-speedBox.Position = UDim2.new(0, 20, 0, 65)
+speedBox.Position = UDim2.new(0, 20, 0, 35)
 speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-speedBox.PlaceholderText = "Enter speed (e.g. 100)"
-speedBox.Text = "16"
+speedBox.PlaceholderText = "Enter speed"
+speedBox.Text = tostring(speedValue) -- Изначально 45
 speedBox.Font = Enum.Font.Gotham
 speedBox.TextSize = 14
-speedBox.Parent = mainFrame
+speedBox.BorderSizePixel = 0
+speedBox.Parent = contentFrame
+
+-- Закругленные углы для поля ввода
+local boxCorner = Instance.new("UICorner")
+boxCorner.CornerRadius = UDim.new(0, 6)
+boxCorner.Parent = speedBox
 
 -- Логика ввода скорости
 speedBox.FocusLost:Connect(function()
@@ -82,13 +126,19 @@ end)
 -- Кнопка Infinite Jump (Toggle)
 local jumpBtn = Instance.new("TextButton")
 jumpBtn.Size = UDim2.new(0, 180, 0, 35)
-jumpBtn.Position = UDim2.new(0, 20, 0, 110)
-jumpBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-jumpBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-jumpBtn.Text = "Infinite Jump: ON"
+jumpBtn.Position = UDim2.new(0, 20, 0, 80)
+jumpBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Изначально серая (OFF)
+jumpBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+jumpBtn.Text = "Infinite Jump: OFF"
 jumpBtn.Font = Enum.Font.GothamBold
 jumpBtn.TextSize = 14
-jumpBtn.Parent = mainFrame
+jumpBtn.BorderSizePixel = 0
+jumpBtn.Parent = contentFrame
+
+-- Закругленные углы для кнопки
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 6)
+btnCorner.Parent = jumpBtn
 
 jumpBtn.MouseButton1Click:Connect(function()
 	infiniteJumpEnabled = not infiniteJumpEnabled
@@ -106,13 +156,13 @@ end)
 -- Информация о Shift
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Size = UDim2.new(1, 0, 0, 20)
-infoLabel.Position = UDim2.new(0, 0, 0, 150)
+infoLabel.Position = UDim2.new(0, 0, 0, 120)
 infoLabel.BackgroundTransparency = 1
 infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 infoLabel.Text = "Hold [SHIFT] to use Speed"
 infoLabel.Font = Enum.Font.Gotham
 infoLabel.TextSize = 11
-infoLabel.Parent = mainFrame
+infoLabel.Parent = contentFrame
 
 -- Подпись "by artar"
 local signature = Instance.new("TextLabel")
@@ -123,7 +173,25 @@ signature.TextColor3 = Color3.fromRGB(150, 150, 150)
 signature.Text = "by artar"
 signature.Font = Enum.Font.Gotham
 signature.TextSize = 10
-signature.Parent = mainFrame
+signature.Parent = contentFrame
+
+-- Логика сворачивания меню
+minimizeBtn.MouseButton1Click:Connect(function()
+	isMinimized = not isMinimized
+	if isMinimized then
+		-- Сворачиваем: скрываем контент и уменьшаем высоту
+		contentFrame.Visible = false
+		mainFrame.Size = UDim2.new(0, 220, 0, 30)
+		minimizeBtn.Text = "+"
+		-- Возвращаем верхнюю панель в исходное состояние (скругление снизу)
+		topCorner.CornerRadius = UDim.new(0, 10)
+	else
+		-- Разворачиваем: показываем контент и возвращаем высоту
+		contentFrame.Visible = true
+		mainFrame.Size = UDim2.new(0, 220, 0, 210)
+		minimizeBtn.Text = "—"
+	end
+end)
 
 -- 2. Логика работы скрипта (Бесконечный прыжок и скорость)
 
